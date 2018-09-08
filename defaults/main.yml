@@ -1,0 +1,22 @@
+---
+# defaults file for ansible-role-autopki
+
+ca_name: 'Auto-PKI'
+ca_domain_name: 'autopki.local'
+ca_rsa_key_size: 4096
+ca_country: 'FR'
+ca_state: 'Bouches du Rhône'
+ca_locality: 'Meyreuil'
+ca_organization_name: "Auto PKI"
+ca_organizational_unit: "Auto PKI CA"
+ca_common_name: "{{ ca_organizational_unit }}"
+ca_email: "admin@{{ ca_domain_name }}"
+ca_days_validity: 1825
+
+cert_common_name: "{{ ansible_fqdn }}"
+cert_rsa_key_size: 4096
+cert_country_name: "{{ ca_country }}"
+cert_organization_name: "{{ ca_organization_name }}"
+cert_email_address: "{{ cert_email }}"
+
+# vim: bs=2 sw=2 expandtab:

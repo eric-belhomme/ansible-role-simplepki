@@ -1,0 +1,241 @@
+---
+### CA environment initialization
+- name: create CA directory structure
+  file:
+    path: "{{ pki_root_path }}/{{ item }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0750
+    state: directory
+  with_items:
+  - ca/root-ca/db
+  - ca/signing-ca/db
+  - crl
+  - certs
+  - etc
+  delegate_to: localhost
+
+- name: create CA directories private dir
+  file:
+    path: "{{ pki_root_path }}/ca/{{ item }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0700
+    state: directory
+  with_items:
+  - root-ca/private
+  - signing-ca/private
+  delegate_to: localhost
+
+- name: copy PKI configuration files
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ pki_root_path }}/etc/{{ item }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  with_items:
+  - root-ca.conf
+  - signing-ca.conf
+  - server.conf
+  delegate_to: localhost
+
+- block:
+  - name: ensure {{ item }} is initialized
+    stat:
+      path: "{{ pki_root_path }}/ca/{{ item }}"
+    delegate_to: localhost
+    register: ca_db_file
+
+  - name: create empty {{ item }} file
+    copy:
+      dest: "{{ pki_root_path }}/ca/{{ item }}"
+      content: ''
+      owner: "{{ pki_user }}"
+      group: "{{ pki_group }}"
+      mode: 0640
+    delegate_to: localhost
+    when: ca_db_file.stat.exists == False
+  with_items:
+  - root-ca/db/root-ca.db
+  - root-ca/db/root-ca.db.attr
+  - signing-ca/db/root-ca.db
+  - signing-ca/db/root-ca.db.attr
+
+#- name: ensure CA attr db files are initialized
+#  stat:
+#    path: "{{ pki_root_path }}/ca/db/root-ca/db/root-ca.db.attr"
+#  delegate_to: localhost
+#  register: root_ca_db_attr
+#
+#- name: create empty CA attr db file
+#  file:
+#    path: "{{ pki_root_path }}/ca/db/root-ca/db/root-ca.db.attr"
+#    owner: "{{ pki_user }}"
+#    group: "{{ pki_group }}"
+#    mode: 0640
+#  delegate_to: localhost
+#  when: root_ca_db_attr.stat.exists == False
+#
+#- name: ensure CA crt serial file is initialized
+#  stat:
+#    path: "{{ pki_root_path }}/ca/db/root-ca/db/root-ca.crt.srl"
+#  delegate_to: localhost
+#  register: root_ca_crt
+#
+#- name: initialize CA crt serial file
+#  copy:
+#    dest: "{{ pki_root_path }}/ca/db/root-ca/db/root-ca.crt.srl"
+#    content: '01'
+#    owner: "{{ pki_user }}"
+#    group: "{{ pki_group }}"
+#    mode: 0640
+#  delegate_to: localhost
+#  when: root_ca_crt.stat.exists == False
+
+- block:
+  - name: ensure {{ item }} file is initialized
+    stat:
+      path: "{{ pki_root_path }}/ca/{{ item }}"
+    delegate_to: localhost
+    register: file_stat
+
+  - name: initialize {{ item }} file
+    copy:
+      dest: "{{ pki_root_path }}/ca/{{ item }}"
+      content: '01'
+      owner: "{{ pki_user }}"
+      group: "{{ pki_group }}"
+      mode: 0640
+    delegate_to: localhost
+    when: file_stat.stat.exists == False
+  with_items:
+  - root-ca/db/root-ca.crl.srl
+  - root-ca/db/root-ca.crt.srl
+  - signing-ca/db/root-ca.crl.srl
+  - signing-ca/db/root-ca.crt.srl
+
+### Root CA
+- name: create CA private key
+  openssl_privatekey:
+    path: "{{ pki_root_path }}/private/root-ca.key"
+    size: "{{ ca_rsa_key_size }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0400
+  delegate_to: localhost
+
+- name: check if root-ca CSR file exists
+  stat:
+    path: "{{ pki_root_path }}/csr/root-ca.csr"
+  delegate_to: localhost
+  register: root_csr_present
+
+- name: create request for CA cert
+  shell: |
+    openssl req -new
+    -key {{ pki_root_path }}/private/root-ca.key
+    -out {{ pki_root_path }}/csr/root-ca.csr
+    -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
+    -config {{ pki_root_path }}/etc/root-ca.conf
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: root_csr_present.stat.exists == False
+
+- name: set ownership and mode for CA csr file
+  file:
+    path: "{{ pki_root_path }}/csr/root-ca.csr"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+- name: check if root-ca certificate file exists
+  stat:
+    path: "{{ pki_root_path }}/ca/root-ca.crt"
+  delegate_to: localhost
+  register: root_crt_present
+
+- name: Generate a Self Signed OpenSSL certificate
+  shell: |
+    openssl ca -selfsign
+      -config {{ pki_root_path }}/etc/root-ca.conf
+      -in {{ pki_root_path }}/ca/root-ca.csr
+      -out {{ pki_root_path }}/ca/root-ca.crt
+      -extensions root_ca_ext
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: root_crt_present.stat.exists == False
+
+- name: set ownership and mode for CA crt file
+  file:
+    path: "{{ pki_root_path }}/ca/root-ca.crt"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+  
+### Signing CA
+- name: create CA private key
+  openssl_privatekey:
+    path: "{{ pki_root_path }}/ca/signing-ca/private/signing-ca.key"
+    size: "{{ ca_rsa_key_size }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0400
+  delegate_to: localhost
+
+- name: check if root-ca CSR file exists
+  stat:
+    path: "{{ pki_root_path }}/ca/signing-ca.csr"
+  delegate_to: localhost
+  register: signing_csr_present
+
+- name: create request for CA cert
+  shell: |
+    openssl req -new
+      -config {{ pki_root_path }}/etc/signing-ca.conf
+      -out {{ pki_root_path }}/ca/signing-ca.csr
+#      -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: signing_csr_present.stat.exists == False
+
+- name: set ownership and mode for signing CA csr file
+  file:
+    path: "{{ pki_root_path }}/csr/signing-ca.csr"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+- name: check if signing-ca certificate file exists
+  stat:
+    path: "{{ pki_root_path }}/ca/signing-ca.crt"
+  delegate_to: localhost
+  register: signing_crt_present
+
+- name: Generate a signing CA certificate
+  shell: |
+    openssl ca
+      config {{ pki_root_path }}/etc/root-ca.conf
+      -in {{ pki_root_path }}/ca/signing-ca.csr
+      -out {{ pki_root_path }}/ca/signing-ca.crt
+      -extensions signing_ca_ext
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: signing_crt_present.stat.exists == False
+
+- name: set ownership and mode for signing CA crt file
+  file:
+    path: "{{ pki_root_path }}/ca/signing-ca.crt"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+# vim: bs=2 sw=2 expandtab:

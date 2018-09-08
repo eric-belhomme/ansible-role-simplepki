@@ -1,0 +1,49 @@
+---
+# tasks file for ansible-role-autopki
+# based on https://pki-tutorial.readthedocs.io/en/latest/simple/#create-tls-server-request
+
+### install prerequisites
+- name: check is Ansible controller runs on Debian-based system
+  stat:
+    path: /etc/debian_version
+  delegate_to: localhost
+  register: is_debian
+
+- name: check is Ansible controller runs on RedHat-based system
+  stat:
+    path: /etc/redhat-release
+  delegate_to: localhost
+  register: is_redhat
+
+- name: fail when detected system is both Debian and RedHat
+  fail: msg="is_debian and is_redhat can't be both defined !"
+  when: is_debian is defined and is_redhat is defined 
+
+- name: install prerequisite packages for RedHat
+  yum:
+    name: '{{ item }}'
+    state: present
+  with_items:
+  - openssl
+  - pyOpenSSL
+  delegate_to: localhost
+  when: is_redhat
+
+- name: install prerequisite packages for Debian
+  apt:
+    name: '{{ item }}'
+    state: present
+  with_items:
+  - openssl
+  - python-openssl
+  delegate_to: localhost
+  when: is_debian
+
+### CA environment
+- include: root-ca.yml
+
+### server CA generation
+- include: cert_server.yml
+
+
+# vim: bs=2 sw=2 expandtab:

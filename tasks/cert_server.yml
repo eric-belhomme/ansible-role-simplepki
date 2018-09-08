@@ -1,0 +1,69 @@
+---
+
+- name: enumerate IP addresses (but not the loopback interface)
+  shell: ip -f inet addr show | grep -Po 'inet \K(?(?=127.0.0.1)|[\d.]+)'
+  register: ip_addrs
+
+
+- name: copy openssl conf file for server {{ cert_common_name }}
+  template:
+    src: "server.conf.j2"
+    dest: "{{ pki_root_path }}/etc/server_{{ cert_common_name }}.conf"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+### cert request
+- name: check if {{ cert_common_name }} CSR file exists
+  stat:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.csr"
+  delegate_to: localhost
+  register: cert_csr_present
+
+- name: create request for {{ cert_common_name }} cert
+  shell: |
+    openssl req -new
+      -config {{ pki_root_path }}/etc/server_{{ cert_common_name }}.conf
+      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.csr
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: cert_csr_present.stat.exists == False
+
+- name: set ownership and mode for {{ cert_common_name }} csr file
+  file:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.csr"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+### cert issue
+- name: check if {{ cert_common_name }} certificate file exists
+  stat:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.crt"
+  delegate_to: localhost
+  register: cert_crt_present
+
+- name: Generate {{ cert_common_name }} certificate
+  shell: |
+    openssl ca
+      config {{ pki_root_path }}/etc/signing-ca.conf
+      -in {{ pki_root_path }}/certs/{{ cert_common_name }}.csr
+      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.crt
+      -extensions server_ext
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when: signing_crt_present.stat.exists == False
+
+- name: set ownership and mode for{{ cert_common_name }} crt file
+  file:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.crt"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+
+# vim: bs=2 sw=2 expandtab:
