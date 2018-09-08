@@ -9,8 +9,6 @@
   template:
     src: "server.conf.j2"
     dest: "{{ pki_root_path }}/etc/server_{{ cert_common_name }}.conf"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 
@@ -31,11 +29,9 @@
   delegate_to: localhost
   when: cert_csr_present.stat.exists == False
 
-- name: set ownership and mode for {{ cert_common_name }} csr file
+- name: set mode for {{ cert_common_name }} csr file
   file:
     path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.csr"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 
@@ -58,11 +54,9 @@
   delegate_to: localhost
   when: signing_crt_present.stat.exists == False
 
-- name: set ownership and mode for{{ cert_common_name }} crt file
+- name: set mode for{{ cert_common_name }} crt file
   file:
     path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.crt"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 

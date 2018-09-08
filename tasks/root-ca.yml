@@ -3,8 +3,6 @@
 - name: create CA directory structure
   file:
     path: "{{ pki_root_path }}/{{ item }}"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0750
     state: directory
   with_items:
@@ -18,8 +16,6 @@
 - name: create CA directories private dir
   file:
     path: "{{ pki_root_path }}/ca/{{ item }}"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0700
     state: directory
   with_items:
@@ -31,8 +27,6 @@
   template:
     src: "{{ item }}.j2"
     dest: "{{ pki_root_path }}/etc/{{ item }}"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   with_items:
   - root-ca.conf
@@ -67,8 +61,6 @@
   openssl_privatekey:
     path: "{{ pki_root_path }}/private/root-ca.key"
     size: "{{ ca_rsa_key_size }}"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0400
   delegate_to: localhost
 
@@ -90,11 +82,9 @@
   delegate_to: localhost
   when: root_csr_present.stat.exists == False
 
-- name: set ownership and mode for CA csr file
+- name: set mode for CA csr file
   file:
     path: "{{ pki_root_path }}/csr/root-ca.csr"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 
@@ -116,11 +106,9 @@
   delegate_to: localhost
   when: root_crt_present.stat.exists == False
 
-- name: set ownership and mode for CA crt file
+- name: set mode for CA crt file
   file:
     path: "{{ pki_root_path }}/ca/root-ca.crt"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
   
@@ -129,8 +117,6 @@
   openssl_privatekey:
     path: "{{ pki_root_path }}/ca/signing-ca/private/signing-ca.key"
     size: "{{ ca_rsa_key_size }}"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0400
   delegate_to: localhost
 
@@ -151,11 +137,9 @@
   delegate_to: localhost
   when: signing_csr_present.stat.exists == False
 
-- name: set ownership and mode for signing CA csr file
+- name: set mode for signing CA csr file
   file:
     path: "{{ pki_root_path }}/csr/signing-ca.csr"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 
@@ -177,11 +161,9 @@
   delegate_to: localhost
   when: signing_crt_present.stat.exists == False
 
-- name: set ownership and mode for signing CA crt file
+- name: set mode for signing CA crt file
   file:
     path: "{{ pki_root_path }}/ca/signing-ca.crt"
-    owner: "{{ pki_user }}"
-    group: "{{ pki_group }}"
     mode: 0640
   delegate_to: localhost
 
