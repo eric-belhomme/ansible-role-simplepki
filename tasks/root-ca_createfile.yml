@@ -1,0 +1,19 @@
+---
+
+- name: ensure {{ file_name }} is initialized
+  stat:
+    path: "{{ pki_root_path }}/ca/{{ file_name }}"
+  delegate_to: localhost
+  register: file_name_stat
+
+- name: create empty {{ file_name }} file
+  copy:
+    dest: "{{ pki_root_path }}/ca/{{ file_name }}"
+    content: "{{ file_content }}"
+    owner: "{{ pki_user }}"
+    group: "{{ pki_group }}"
+    mode: 0640
+  delegate_to: localhost
+  when: file_name_stat.stat.exists == False
+
+# vim: bs=2 sw=2 expandtab:
