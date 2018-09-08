@@ -1,5 +1,6 @@
 ---
 # defaults file for ansible-role-autopki
+pki_root_path: /tmp/pki
 
 ca_name: 'Auto-PKI'
 ca_domain_name: 'autopki.local'
@@ -17,6 +18,6 @@ cert_common_name: "{{ ansible_fqdn }}"
 cert_rsa_key_size: 4096
 cert_country_name: "{{ ca_country }}"
 cert_organization_name: "{{ ca_organization_name }}"
-cert_email_address: "{{ cert_email }}"
+cert_email: "{{ ca_email }}"
 
 # vim: bs=2 sw=2 expandtab:

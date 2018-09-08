@@ -31,11 +31,10 @@
   with_items:
   - root-ca.conf
   - signing-ca.conf
-  - server.conf
   delegate_to: localhost
 
 - name: initialize db file {{ item }}
-  include_tasks: db_init_schema.yml
+  include_tasks: root-ca_createfile.yml
   vars:
     file_name: "{{ item }}"
     file_content: ''
@@ -46,7 +45,7 @@
   - signing-ca/db/root-ca.db.attr
 
 - name: initialize serial file {{ item }}
-  include_tasks: db_init_schema.yml
+  include_tasks: root-ca_createfile.yml
   vars:
     file_name: "{{ item }}"
     file_content: '01'
@@ -57,10 +56,20 @@
   - signing-ca/db/root-ca.crt.srl
 
 ### Root CA
-- name: create CA private key
-  openssl_privatekey:
-    path: "{{ pki_root_path }}/private/root-ca.key"
-    size: "{{ ca_rsa_key_size }}"
+- name: check if root-ca key file exists
+  stat:
+    path: "{{ pki_root_path }}/ca/root-ca/private/root-ca.key"
+  delegate_to: localhost
+  register: root_key_present
+
+- name: create root CA key file
+  command: "openssl genrsa -out {{ pki_root_path }}/ca/root-ca/private/root-ca.key {{ ca_rsa_key_size }}"
+  delegate_to: localhost
+  when: root_key_present.stat.exists != True
+
+- name: set mode for root CA key file
+  file:
+    path: "{{ pki_root_path }}/ca/root-ca/private/root-ca.key"
     mode: 0400
   delegate_to: localhost
 
@@ -73,7 +82,7 @@
 - name: create request for CA cert
   shell: |
     openssl req -new
-    -key {{ pki_root_path }}/private/root-ca.key
+    -key {{ pki_root_path }}/ca/root-ca/private/root-ca.key
     -out {{ pki_root_path }}/csr/root-ca.csr
     -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
     -config {{ pki_root_path }}/etc/root-ca.conf
@@ -113,10 +122,20 @@
   delegate_to: localhost
   
 ### Signing CA
-- name: create CA private key
-  openssl_privatekey:
+- name: check if root-ca key file exists
+  stat:
     path: "{{ pki_root_path }}/ca/signing-ca/private/signing-ca.key"
-    size: "{{ ca_rsa_key_size }}"
+  delegate_to: localhost
+  register: root_key_present
+
+- name: create root CA key file
+  command: "openssl genrsa -out {{ pki_root_path }}/ca/signing-ca/private/signing-ca.key {{ ca_rsa_key_size }}"
+  delegate_to: localhost
+  when: root_key_present.stat.exists != True
+
+- name: set mode for root CA key file
+  file:
+    path: "{{ pki_root_path }}/ca/root-ca/private/root-ca.key"
     mode: 0400
   delegate_to: localhost
 

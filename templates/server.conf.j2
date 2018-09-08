@@ -17,19 +17,16 @@ distinguished_name      = server_dn             # DN template
 req_extensions          = server_reqext         # Desired extensions
 
 [ server_dn ]
-# 0.domainComponent       = "1. Domain Component         (eg, com)      "
-# 1.domainComponent       = "2. Domain Component         (eg, company)  "
-# 2.domainComponent       = "3. Domain Component         (eg, pki)      "
 {% set index = 0 %}
-{% for item in ca_domain_name.split('.') | reverse() %}
-{{ index }}.domainComponent = "{{ item }}"
-{% set index += 1 %}
+{% for domaincomponent in cert_common_name.split('.') | reverse() %}
+{{ index }}.domainComponent = "{{ domaincomponent }}"
+{% set index = index + 1 %}
 {% endfor %}
 organizationName        = "{{ ca_organization_name }}"
 organizationalUnitName  = "{{ ca_organizational_unit }}"
 commonName              = "{{ cert_common_name }}"
 commonName_max          = 64
-emailAddress            = "{{ cert_email_address }}"
+emailAddress            = "{{ cert_email }}"
 
 [ server_reqext ]
 keyUsage                = critical,digitalSignature,keyEncipherment

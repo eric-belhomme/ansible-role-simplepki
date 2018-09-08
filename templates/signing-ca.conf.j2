@@ -23,11 +23,14 @@ distinguished_name      = ca_dn                 # DN section
 req_extensions          = ca_reqext             # Desired extensions
 
 [ ca_dn ]
-0.domainComponent       = "org"
-1.domainComponent       = "simple"
-organizationName        = "Simple Inc"
-organizationalUnitName  = "Simple Signing CA"
-commonName              = "Simple Signing CA"
+{% set index = 0 %}
+{% for domaincomponent in ca_domain_name.split('.') | reverse() %}
+{{ index }}.domainComponent = "{{ domaincomponent }}"
+{% set index = index + 1 %}
+{% endfor %}
+organizationName        = "{{ ca_organization_name }}"
+organizationalUnitName  = "{{ ca_organizational_unit }}"
+commonName              = "{{ ca_common_name }}"
 
 [ ca_reqext ]
 keyUsage                = critical,keyCertSign,cRLSign

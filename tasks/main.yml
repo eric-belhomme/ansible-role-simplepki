@@ -17,7 +17,7 @@
 
 - name: fail when detected system is both Debian and RedHat
   fail: msg="is_debian and is_redhat can't be both defined !"
-  when: is_debian is defined and is_redhat is defined 
+  when: is_debian.stat.exists and is_redhat.stat.exists
 
 - name: install prerequisite packages for RedHat
   yum:
@@ -27,7 +27,9 @@
   - openssl
   - pyOpenSSL
   delegate_to: localhost
-  when: is_redhat
+  become: true
+  become_user: root
+  when: is_redhat.stat.exists
 
 - name: install prerequisite packages for Debian
   apt:
@@ -37,7 +39,9 @@
   - openssl
   - python-openssl
   delegate_to: localhost
-  when: is_debian
+  become: true
+  become_user: root
+  when: is_debian.stat.exists
 
 ### CA environment
 - include: root-ca.yml
