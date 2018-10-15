@@ -12,6 +12,26 @@
     mode: 0640
   delegate_to: localhost
 
+### key
+- name: check if {{ cert_common_name }} key file exists
+  stat:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.key"
+  delegate_to: localhost
+  register: server_key_present
+
+- name: create {{ cert_common_name }} key file
+  command: "openssl genrsa -out {{ pki_root_path }}/certs/{{ cert_common_name }}.key {{ ca_rsa_key_size }}"
+  args:
+    chdir: "{{ pki_root_path }}"
+  delegate_to: localhost
+  when: server_key_present.stat.exists != True
+
+- name: set mode for {{ cert_common_name }} key file
+  file:
+    path: "{{ pki_root_path }}/certs/{{ cert_common_name }}.key"
+    mode: 0400
+  delegate_to: localhost
+
 ### cert request
 - name: check if {{ cert_common_name }} CSR file exists
   stat:
@@ -21,11 +41,14 @@
 
 - name: create request for {{ cert_common_name }} cert
   shell: |
-    openssl req -new
+    openssl req -new \
+      -key {{ pki_root_path }}/certs/{{ cert_common_name }}.key \
+      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.csr \
+      -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{cert_common_name}}" \
       -config {{ pki_root_path }}/etc/server_{{ cert_common_name }}.conf
-      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.csr
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: cert_csr_present.stat.exists == False
 
@@ -44,15 +67,16 @@
 
 - name: Generate {{ cert_common_name }} certificate
   shell: |
-    openssl ca
-      config {{ pki_root_path }}/etc/signing-ca.conf
-      -in {{ pki_root_path }}/certs/{{ cert_common_name }}.csr
-      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.crt
+    openssl ca -batch \
+      -config {{ pki_root_path }}/etc/signing-ca.conf \
+      -in {{ pki_root_path }}/certs/{{ cert_common_name }}.csr \
+      -out {{ pki_root_path }}/certs/{{ cert_common_name }}.crt \
       -extensions server_ext
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
-  when: signing_crt_present.stat.exists == False
+  when: cert_crt_present.stat.exists == False
 
 - name: set mode for{{ cert_common_name }} crt file
   file:
