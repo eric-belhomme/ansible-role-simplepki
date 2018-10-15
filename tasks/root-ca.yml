@@ -41,8 +41,8 @@
   with_items:
   - root-ca/db/root-ca.db
   - root-ca/db/root-ca.db.attr
-  - signing-ca/db/root-ca.db
-  - signing-ca/db/root-ca.db.attr
+  - signing-ca/db/signing-ca.db
+  - signing-ca/db/signing-ca.db.attr
 
 - name: initialize serial file {{ item }}
   include_tasks: root-ca_createfile.yml
@@ -52,8 +52,8 @@
   with_items:
   - root-ca/db/root-ca.crl.srl
   - root-ca/db/root-ca.crt.srl
-  - signing-ca/db/root-ca.crl.srl
-  - signing-ca/db/root-ca.crt.srl
+  - signing-ca/db/signing-ca.crl.srl
+  - signing-ca/db/signing-ca.crt.srl
 
 ### Root CA
 - name: check if root-ca key file exists
