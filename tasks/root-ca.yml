@@ -64,6 +64,8 @@
 
 - name: create root CA key file
   command: "openssl genrsa -out {{ pki_root_path }}/ca/root-ca/private/root-ca.key {{ ca_rsa_key_size }}"
+  args:
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: root_key_present.stat.exists != True
 
@@ -81,19 +83,20 @@
 
 - name: create request for CA cert
   shell: |
-    openssl req -new
-    -key {{ pki_root_path }}/ca/root-ca/private/root-ca.key
-    -out {{ pki_root_path }}/csr/root-ca.csr
-    -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
+    openssl req -new \
+    -key {{ pki_root_path }}/ca/root-ca/private/root-ca.key \
+    -out {{ pki_root_path }}/ca/root-ca.csr \
     -config {{ pki_root_path }}/etc/root-ca.conf
+#    -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_distinguished_name}}" \
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: root_csr_present.stat.exists == False
 
 - name: set mode for CA csr file
   file:
-    path: "{{ pki_root_path }}/csr/root-ca.csr"
+    path: "{{ pki_root_path }}/ca/root-ca.csr"
     mode: 0640
   delegate_to: localhost
 
@@ -105,13 +108,14 @@
 
 - name: Generate a Self Signed OpenSSL certificate
   shell: |
-    openssl ca -selfsign
-      -config {{ pki_root_path }}/etc/root-ca.conf
-      -in {{ pki_root_path }}/ca/root-ca.csr
-      -out {{ pki_root_path }}/ca/root-ca.crt
+    openssl ca -batch -selfsign \
+      -config {{ pki_root_path }}/etc/root-ca.conf \
+      -in {{ pki_root_path }}/ca/root-ca.csr \
+      -out {{ pki_root_path }}/ca/root-ca.crt \
       -extensions root_ca_ext
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: root_crt_present.stat.exists == False
 
@@ -122,47 +126,51 @@
   delegate_to: localhost
   
 ### Signing CA
-- name: check if root-ca key file exists
+- name: check if signing CA key file exists
   stat:
     path: "{{ pki_root_path }}/ca/signing-ca/private/signing-ca.key"
   delegate_to: localhost
   register: root_key_present
 
-- name: create root CA key file
+- name: create signing CA key file
   command: "openssl genrsa -out {{ pki_root_path }}/ca/signing-ca/private/signing-ca.key {{ ca_rsa_key_size }}"
+  args:
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: root_key_present.stat.exists != True
 
-- name: set mode for root CA key file
+- name: set mode for singing CA key file
   file:
-    path: "{{ pki_root_path }}/ca/root-ca/private/root-ca.key"
+    path: "{{ pki_root_path }}/ca/signing-ca/private/signing-ca.key"
     mode: 0400
   delegate_to: localhost
 
-- name: check if root-ca CSR file exists
+- name: check if signing CA CSR file exists
   stat:
     path: "{{ pki_root_path }}/ca/signing-ca.csr"
   delegate_to: localhost
   register: signing_csr_present
 
-- name: create request for CA cert
+- name: create request for signing CA cert
   shell: |
-    openssl req -new
-      -config {{ pki_root_path }}/etc/signing-ca.conf
-      -out {{ pki_root_path }}/ca/signing-ca.csr
-#      -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
+    openssl req -new \
+    -key {{ pki_root_path }}/ca/signing-ca/private/signing-ca.key \
+    -out {{ pki_root_path }}/ca/signing-ca.csr \
+    -config {{ pki_root_path }}/etc/signing-ca.conf
+#   -subj "/C={{ca_country}}/ST={{ca_state}}/L={{ca_locality}}/O={{ca_organization_name}}/OU={{ca_organizational_unit}}/CN={{ca_common_name}}"
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: signing_csr_present.stat.exists == False
 
 - name: set mode for signing CA csr file
   file:
-    path: "{{ pki_root_path }}/csr/signing-ca.csr"
+    path: "{{ pki_root_path }}/ca/signing-ca.csr"
     mode: 0640
   delegate_to: localhost
 
-- name: check if signing-ca certificate file exists
+- name: check if signing CA certificate file exists
   stat:
     path: "{{ pki_root_path }}/ca/signing-ca.crt"
   delegate_to: localhost
@@ -170,13 +178,14 @@
 
 - name: Generate a signing CA certificate
   shell: |
-    openssl ca
-      config {{ pki_root_path }}/etc/root-ca.conf
-      -in {{ pki_root_path }}/ca/signing-ca.csr
-      -out {{ pki_root_path }}/ca/signing-ca.crt
+    openssl ca -batch \
+      -config {{ pki_root_path }}/etc/root-ca.conf \
+      -in {{ pki_root_path }}/ca/signing-ca.csr \
+      -out {{ pki_root_path }}/ca/signing-ca.crt \
       -extensions signing_ca_ext
   args:
     executable: /bin/bash
+    chdir: "{{ pki_root_path }}"
   delegate_to: localhost
   when: signing_crt_present.stat.exists == False
 

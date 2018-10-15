@@ -6,7 +6,7 @@ ca_name: 'Auto-PKI'
 ca_domain_name: 'autopki.local'
 ca_rsa_key_size: 4096
 ca_country: 'FR'
-ca_state: 'Bouches du Rhône'
+ca_state: 'Bouches du Rhone'
 ca_locality: 'Meyreuil'
 ca_organization_name: "Auto PKI"
 ca_organizational_unit: "Auto PKI CA"
